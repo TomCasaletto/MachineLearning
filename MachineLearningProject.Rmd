@@ -1,0 +1,225 @@
+---
+output: html_document
+---
+###<b>Prediction Assignment Writeup</b>
+Tom Casaletto, Practical Machine Learning (Johns Hopkins University)
+
+####<b>Executive Summary</b>
+One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. In this project, the goal is to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants.  The goal of this project is to predict the manner in which the participants did the exercise.  In particular, discuss:
+<ol>
+<li>how the model was built
+<li>the use of cross validation
+<li>the expected out of sample error
+<li>what choices were made and why
+</ol>
+
+####<b>Exploratory Data Analysis</b>
+After inspecting the data, we notice that much of the data is not useful for the predictions:
+<ol>
+<li>we remove the index column since it has no predictive value (nuisance variable)
+<li>we remove the timestamp columns because we are not forecasting
+<li>we remove the columns which are predominantly NaNs or empty
+</ol>
+This leaves us with 53 predictive variables for our models.
+
+Since we have an abundance of data (19622 observations) we divide the training data into 3 groups:
+<ol>
+<li>training (60%)
+<li>validation (20%)
+<li>testing (20%)
+</ol>
+This allows us to perform better model development and testing.
+```{r, echo=TRUE, eval=FALSE}
+set.seed(23625)
+library(lattice); library(ggplot2);library(caret)
+df <- read.csv("./pml-training.csv", stringsAsFactors = TRUE)
+dfClean <- df[,c(2,8:11,37:49,60:68,84:86,102,113:124,140,151:160)]
+
+inBuild <- createDataPartition(y=dfClean$classe, p=0.6, list=FALSE)
+training <- dfClean[inBuild,];
+buildData <- dfClean[-inBuild,]
+inTest <- createDataPartition(y=buildData$classe, p=0.5, list=FALSE)
+testing <- buildData[inTest,];
+validation <- buildData[-inTest,];
+```
+
+####<b>Model selection</b>
+We start with building a Random Forest (modelRf) with 5-fold cross validation.
+```{r, echo=TRUE, eval=FALSE}
+modelRf<-train(classe ~ ., data=training, method="rf",
+               trControl=trainControl(method="cv", number=5),
+               proxy=TRUE)
+print(modelRf)
+```
+<pre>
+Random Forest 
+
+11776 samples
+   53 predictors
+    5 classes: 'A', 'B', 'C', 'D', 'E' 
+
+No pre-processing
+Resampling: Cross-Validated (5 fold) 
+Summary of sample sizes: 9420, 9421, 9421, 9421, 9421 
+Resampling results across tuning parameters:
+
+  mtry  Accuracy   Kappa      Accuracy SD  Kappa SD   
+   2    0.9879414  0.9847431  0.002259980  0.002860361
+  29    0.9877716  0.9845290  0.002235477  0.002830353
+  57    0.9791951  0.9736801  0.002381523  0.003018962
+
+Accuracy was used to select the optimal model using  the largest value.
+The final value used for the model was mtry = 2. 
+</pre>
+```{r, echo=TRUE, eval=FALSE}
+print(modelRf$finalModel)
+```
+<pre>
+Call:
+ randomForest(x = x, y = y, mtry = param$mtry, proxy = TRUE) 
+               Type of random forest: classification
+                     Number of trees: 500
+No. of variables tried at each split: 2
+
+        OOB estimate of  error rate: 1.04%
+Confusion matrix:
+     A    B    C    D    E  class.error
+A 3346    2    0    0    0 0.0005973716
+B   20 2243   16    0    0 0.0157964019
+C    0   20 2030    4    0 0.0116845180
+D    0    0   49 1879    2 0.0264248705
+E    0    0    3    6 2156 0.0041570439
+</pre>
+
+We then run the model on the validation set.
+```{r, echo=TRUE, eval=FALSE}
+predRfOnVal <- predict(modelRf, newdata=validation);
+actual <- validation$classe
+idx <- which(predRfOnVal == actual)
+accuracyRfOnVal <- length(idx) / length(actual)
+confusionMatrix(predRfOnVal, actual)
+```
+<pre>
+Confusion Matrix and Statistics
+
+          Reference
+Prediction    A    B    C    D    E
+         A 1116    4    0    0    0
+         B    0  751   14    0    0
+         C    0    4  670   13    0
+         D    0    0    0  629    2
+         E    0    0    0    1  719
+
+Overall Statistics
+                                          
+               Accuracy : 0.9903          
+                 95% CI : (0.9867, 0.9931)
+    No Information Rate : 0.2845          
+    P-Value [Acc > NIR] : < 2.2e-16       
+                                          
+                  Kappa : 0.9877          
+ Mcnemar's Test P-Value : NA              
+
+Statistics by Class:
+
+                     Class: A Class: B Class: C Class: D Class: E
+Sensitivity            1.0000   0.9895   0.9795   0.9782   0.9972
+Specificity            0.9986   0.9956   0.9948   0.9994   0.9997
+Pos Pred Value         0.9964   0.9817   0.9753   0.9968   0.9986
+Neg Pred Value         1.0000   0.9975   0.9957   0.9957   0.9994
+Prevalence             0.2845   0.1935   0.1744   0.1639   0.1838
+Detection Rate         0.2845   0.1914   0.1708   0.1603   0.1833
+Detection Prevalence   0.2855   0.1950   0.1751   0.1608   0.1835
+Balanced Accuracy      0.9993   0.9925   0.9871   0.9888   0.9985
+</pre>
+
+Note that both Sensitivity and Specificity are high for all the classes.  This indicates are model is accurate and we can trust the results.
+
+We do the same procedure with the following models from the caret package and note the resulting accuracy:
+<ul>
+<li>99% - Random Forest
+<li>95% - Stochastic Gradient Boosting
+<li>93% - Support Vector Machine
+<li>75% - Mixture Discriminant Analysis
+<li>73% - Linear Discriminant Analysis
+<li>50% - Recursive Partitioning and Regression Trees
+</ul>
+
+
+####<b>Cross validation</b>
+We note that cross validation was done as part of the original set using caret 5-fold cross validation.  Below we show how this is done manually using 5-fold cross validation.
+```{r, echo=TRUE, eval=FALSE}
+numFolds <- 5
+folds <- createFolds(y=dfClean$classe, k=numFolds)
+preds <- vector("list", numFolds)
+acc <- vector("list", numFolds)
+allIdx <- 1:nrow(dfClean)
+for (i in 1:numFolds) {
+    message(i)
+    if (i==1) {
+        message("1")
+        training <- dfClean[setdiff(allIdx,folds$Fold1),];
+        testing <- dfClean[folds$Fold1,];
+    } else if (i==2) {
+        message("2")
+        training <- dfClean[setdiff(allIdx,folds$Fold2),];
+        testing <- dfClean[folds$Fold2,];
+    } else if (i==3) {
+        message("3")
+        training <- dfClean[setdiff(allIdx,folds$Fold3),];
+        testing <- dfClean[folds$Fold3,];
+    } else if (i==4) {
+        message("4")
+        training <- dfClean[setdiff(allIdx,folds$Fold4),];
+        testing <- dfClean[folds$Fold4,];
+    } else if (i==5) {
+        message("5")
+        training <- dfClean[setdiff(allIdx,folds$Fold5),];
+        testing <- dfClean[folds$Fold5,];
+    }
+    
+    modelRf <- train(classe ~ ., data=training, method="rf", proxy=TRUE)
+    preds[[i]] <- predict(modelRf, newdata=testing);
+    actual <- testing$classe
+    idx <- which(preds[[i]] == actual)
+    acc[[i]] <- length(idx) / length(actual)
+}
+acc
+```
+<pre>
+[1] 0.9933724
+[2] 0.9951605
+[3] 0.9961783
+[4] 0.9949032
+[5] 0.9928644
+</pre>
+This shows that our model is consistently accurate.
+
+####<b>Out of sample error</b>
+Now we are able to use the Cross Validation to get the out of sample error.  To do this, we compute the average accuracy across the 5 folds.
+```{r, echo=TRUE, eval=FALSE}
+aveAcc <- mean(as.numeric(acc))
+oos_error <- 1 - aveAcc
+oos_error
+```
+<pre>
+[1] 0.005504237
+So we see the out of sample error is 0.5% which is quite good.
+</pre>
+
+####<b>Summary</b>
+In this report we achieved all the goals as stated in the problem statement:
+<ol>
+<li>The Random Forest model was built with 53 predictors
+<li>A 5 fold Cross Validation was done to verify the caret package results
+<li>The expected out of sample error was computed
+</ol>
+
+
+####<b>Links and References</b>
+<ol>
+<li>[Training data set](https://www.youtube.com/watch?v=bfGhfalZR-Y)
+<li>[Testing data set](https://www.youtube.com/watch?v=itEyHjNjMIc)  
+<li>[Website on experiment](http://groupware.les.inf.puc-rio.br/har)
+<li>[Paper on data](http://groupware.les.inf.puc-rio.br/public/papers/2013.Velloso.QAR-WLE.pdf)
+</ol>
