@@ -207,6 +207,9 @@ oos_error
 So we see the out of sample error is 0.5% which is quite good.
 </pre>
 
+####<b>Course Project Prediction Quiz</b>
+With the Random Forest trained above, I achieved 19/20 on the quiz.
+
 ####<b>Summary</b>
 In this report we achieved all the goals as stated in the problem statement:
 <ol>
