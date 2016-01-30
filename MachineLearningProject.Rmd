@@ -14,7 +14,7 @@ One thing that people regularly do is quantify how much of a particular activity
 </ol>
 
 ####<b>Exploratory Data Analysis</b>
-After inspecting the data, we notice that much of the data is not useful for the predictions:
+After inspecting the data in detail, we notice that much of the data is not useful for the predictions:
 <ol>
 <li>we remove the index column since it has no predictive value (nuisance variable)
 <li>we remove the timestamp columns because we are not forecasting
@@ -204,8 +204,8 @@ oos_error
 ```
 <pre>
 [1] 0.005504237
-So we see the out of sample error is 0.5% which is quite good.
 </pre>
+So we see the out of sample error is 0.5% which is quite good.
 
 ####<b>Course Project Prediction Quiz</b>
 With the Random Forest trained above, I achieved 19/20 on the quiz.
@@ -221,8 +221,8 @@ In this report we achieved all the goals as stated in the problem statement:
 
 ####<b>Links and References</b>
 <ol>
-<li>[Training data set](https://www.youtube.com/watch?v=bfGhfalZR-Y)
-<li>[Testing data set](https://www.youtube.com/watch?v=itEyHjNjMIc)  
+<li>[Training data set](https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv)
+<li>[Testing data set](https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv)  
 <li>[Website on experiment](http://groupware.les.inf.puc-rio.br/har)
 <li>[Paper on data](http://groupware.les.inf.puc-rio.br/public/papers/2013.Velloso.QAR-WLE.pdf)
 </ol>
